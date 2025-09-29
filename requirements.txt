@@ -1,0 +1,29 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.9.2
+pydantic-settings==2.6.0
+# Use individual supabase stack packages for finer control (avoid proxy kw errors)
+gotrue==2.9.1
+postgrest==0.13.2
+realtime==1.0.6
+storage3==0.7.7
+supabase==2.4.0
+python-multipart==0.0.6
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-decouple==3.8
+# Align httpx with python-telegram-bot 20.7 requirement
+httpx==0.25.2
+ # Removed asyncpg (wheel build failure on Py 3.13); not needed if using HTTP-based supabase client
+redis==5.0.1
+celery==5.3.4
+slowapi==0.1.9
+email-validator==2.1.0
+Pillow==11.3.0
+aiofiles==23.2.1
+jinja2==3.1.2
+python-telegram-bot==20.7
+bcrypt==4.3.0
+cryptography==45.0.7
+websockets==12.0
+python-dotenv==1.0.1
