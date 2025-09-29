@@ -130,6 +130,59 @@ app.include_router(faq.router, prefix="/api/faq", tags=["faq"])
 app.include_router(testimonials.router, prefix="/api/testimonials", tags=["testimonials"])
 app.include_router(contacts_router, prefix="/api", tags=["contacts-compat"])  # /api/contacts
 
+# Add base route handlers for endpoints without trailing slashes (fix 405 errors)
+@app.get("/api/content")
+async def api_content_redirect():
+    """Redirect /api/content to /api/content/ (no trailing slash handler)"""
+    return {
+        "message": "Content API",
+        "endpoints": [
+            "/api/content/about - Get about page content",
+            "/api/content/services - Get services content", 
+            "/api/content/team - Get team content",
+            "/api/content/portfolio - Get portfolio content",
+            "/api/content/faq - Get FAQ content",
+            "/api/content/testimonials - Get testimonials content"
+        ]
+    }
+
+@app.get("/api/auth")  
+async def api_auth_redirect():
+    """Redirect /api/auth to /api/auth/ (no trailing slash handler)"""
+    return {
+        "message": "Authentication API",
+        "endpoints": [
+            "POST /api/auth/session-login - Create admin session",
+            "GET /api/auth/is-admin - Check admin status", 
+            "POST /api/auth/logout - Logout admin user"
+        ]
+    }
+
+@app.get("/api/admin")
+async def api_admin_redirect():
+    """Redirect /api/admin to /api/admin/ (no trailing slash handler)"""
+    return {
+        "message": "Admin API", 
+        "endpoints": [
+            "GET /api/admin/dashboard/stats - Get dashboard statistics",
+            "GET /api/admin/contacts - Get all contact messages",
+            "PUT /api/admin/contacts/{contact_id} - Update contact message", 
+            "DELETE /api/admin/contacts/{contact_id} - Delete contact message"
+        ]
+    }
+
+@app.get("/api/services")
+async def api_services_redirect():
+    """Redirect /api/services to /api/services/ (no trailing slash handler)"""
+    from app.routers.services import get_services
+    return await get_services()
+
+@app.get("/api/team") 
+async def api_team_redirect():
+    """Redirect /api/team to /api/team/ (no trailing slash handler)"""
+    from app.routers.team import get_team_members
+    return await get_team_members()
+
 # TEMP: Admin auth disabled; explicit is-admin and session-login endpoints removed.
 
 # Debug: list routes at startup to verify registrations

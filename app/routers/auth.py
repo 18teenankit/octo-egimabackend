@@ -12,6 +12,18 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+@router.get("/")
+async def get_auth_info():
+    """Get authentication API information and available endpoints"""
+    return {
+        "message": "Authentication API",
+        "endpoints": [
+            "POST /session-login - Create admin session",
+            "GET /is-admin - Check admin status", 
+            "POST /logout - Logout admin user"
+        ]
+    }
+
 # --- Pydantic Models ---
 class SessionLoginRequest(BaseModel):
     access_token: str

@@ -7,6 +7,21 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+@router.get("/")
+async def get_content_info():
+    """Get content API information and available endpoints"""
+    return {
+        "message": "Content API",
+        "endpoints": [
+            "/about - Get about page content",
+            "/services - Get services content", 
+            "/team - Get team content",
+            "/portfolio - Get portfolio content",
+            "/faq - Get FAQ content",
+            "/testimonials - Get testimonials content"
+        ]
+    }
+
 @router.get("/about")
 async def get_about_content():
     """Get about page content (public endpoint)"""

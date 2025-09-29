@@ -7,6 +7,19 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+@router.get("/")
+async def get_admin_info():
+    """Get admin API information and available endpoints"""
+    return {
+        "message": "Admin API",
+        "endpoints": [
+            "GET /dashboard/stats - Get dashboard statistics",
+            "GET /contacts - Get all contact messages",
+            "PUT /contacts/{contact_id} - Update contact message", 
+            "DELETE /contacts/{contact_id} - Delete contact message"
+        ]
+    }
+
 @router.get("/dashboard/stats")
 async def get_dashboard_stats(
     request: Request,
