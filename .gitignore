@@ -1,5 +1,7 @@
 # Environment files (NEVER commit these)
 .env
+.env.backup
+.env.example
 .env.local
 .env.production
 .env.development
