@@ -42,16 +42,20 @@ def check_requirements():
 
 def check_environment():
     """Check if environment variables are set"""
-    required_vars = [
-        "NEXT_PUBLIC_SUPABASE_URL",
-        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-        # Add other required env vars here
-    ]
-
-    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    # Check for required env vars - use flexible naming
+    supabase_url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_ANON_KEY") or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+    
+    missing_vars = []
+    if not supabase_url:
+        missing_vars.append("SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL")
+    if not supabase_key:
+        missing_vars.append("SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY")
+    
     if missing_vars:
         print(f"❌ Missing environment variables: {', '.join(missing_vars)}")
-        print("Please create a .env file based on .env.example")
+        print("Please create a .env file with the required variables")
+        print("See the .env.example for reference")
         return False
 
     print("✅ Environment variables are configured")

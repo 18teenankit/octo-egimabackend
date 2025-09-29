@@ -22,6 +22,7 @@ from io import BytesIO
 from PIL import Image, ImageDraw
 from fastapi import Response
 
+# Load environment variables
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -67,38 +68,53 @@ class DevCORSMiddleware(BaseHTTPMiddleware):
 
 """
 Middleware order note (Starlette): last added runs first on requests.
-We want CORS to be the outermost middleware so it can handle preflights and set headers,
-and we want TrustedHost only in production (to avoid dev preflight 400s).
+We want CORS to be the outermost middleware so it can handle preflights and set headers.
+TrustedHost middleware is configured more permissively to avoid "Invalid Host Header" errors.
 """
 
 # Inner middlewares first
 app.add_middleware(SecurityMiddleware)
 app.add_middleware(RateLimitMiddleware)
 
-# TrustedHost only in production
-if not settings.DEBUG:
-    app.add_middleware(
-        TrustedHostMiddleware,
-        allowed_hosts=settings.ALLOWED_HOSTS
-    )
+# Configure CORS - this will be the outermost middleware
+cors_origins = list(settings.ALLOWED_ORIGINS)
 
-# Finally, add CORS as the outermost layer
-if settings.DEBUG:
+# Add Render domain if not already present
+render_url = "https://cortejtech-backend.onrender.com"
+if render_url not in cors_origins:
+    cors_origins.append(render_url)
+
+# In development or when testing, allow additional origins
+if settings.DEBUG or settings.ENVIRONMENT == "development":
     app.add_middleware(DevCORSMiddleware)
 else:
-    cors_origins = list(settings.ALLOWED_ORIGINS)
-    for extra in [
-        "http://localhost:3002",
-        "http://127.0.0.1:3002",
-    ]:
-        if extra not in cors_origins:
-            cors_origins.append(extra)
+    # Production CORS setup
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=cors_origins,
+        allow_origins=cors_origins + ["*"] if settings.ENVIRONMENT == "testing" else cors_origins,
         allow_credentials=True,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
+        expose_headers=["*"],
+    )
+
+# TrustedHost middleware - more permissive configuration to avoid host header issues
+trusted_hosts = settings.ALLOWED_HOSTS.copy()
+# Add Render domains
+render_hosts = [
+    "cortejtech-backend.onrender.com",
+    "*.onrender.com",  # Allow any onrender.com subdomain
+]
+for host in render_hosts:
+    if host not in trusted_hosts:
+        trusted_hosts.append(host)
+
+# Add TrustedHost middleware only if we have specific hosts to trust
+# In development, we'll be more permissive
+if not settings.DEBUG and trusted_hosts:
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=trusted_hosts + ["*"] if settings.ENVIRONMENT == "testing" else trusted_hosts
     )
 
 # Include routers
@@ -174,10 +190,15 @@ async def placeholder(width: int, height: int):
 if __name__ == "__main__":
     # Configure basic logging if not already configured by parent process
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+    
+    # Use PORT environment variable (for Render) or default to 8000
+    port = int(os.getenv("PORT", 8000))
+    host = "0.0.0.0"  # Important: bind to all interfaces for Render
+    
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
-        port=8000,
+        host=host,
+        port=port,
         reload=os.getenv("ENVIRONMENT") == "development",
         workers=1 if os.getenv("ENVIRONMENT") == "development" else 4
     )

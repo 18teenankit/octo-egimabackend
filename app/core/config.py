@@ -58,10 +58,16 @@ class Settings(BaseSettings):
             "http://localhost:3000",
             "http://localhost:3001",
             "http://localhost:3002",  # allow dev server fallback port
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001", 
+            "http://127.0.0.1:3002",
             "https://cortejtech.com",
             "https://www.cortejtech.com",
             "https://cortejtech.in",
             "https://www.cortejtech.in",
+            "https://cortejtech-backend.onrender.com",  # Render backend URL
+            # Add your frontend domains here
+            "https://your-frontend-domain.com",  # Replace with actual frontend domain
         ]
     )
     
@@ -71,10 +77,13 @@ class Settings(BaseSettings):
         else [
             "localhost",
             "127.0.0.1",
+            "0.0.0.0",  # Important for Docker/Render
             "cortejtech.com",
             "www.cortejtech.com",
             "cortejtech.in",
             "www.cortejtech.in",
+            "cortejtech-backend.onrender.com",  # Render domain
+            "*.onrender.com",  # Allow any Render subdomain
         ]
     )
     
@@ -86,8 +95,8 @@ class Settings(BaseSettings):
     REDIS_URL: str = Field(default="redis://localhost:6379")
     
     # Environment
-    ENVIRONMENT: str = Field(default="development")
-    DEBUG: bool = Field(default=False)
+    ENVIRONMENT: str = Field(default=os.getenv("ENVIRONMENT", "development"))
+    DEBUG: bool = Field(default=os.getenv("DEBUG", "false").lower() in ("true", "1", "yes", "on"))
     # Admin auth cookie name
     ADMIN_COOKIE_NAME: str = Field(default="admin_session")
     # Shared HMAC secret for admin session cookie (must match frontend ADMIN_SESSION_SECRET)

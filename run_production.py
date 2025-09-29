@@ -56,13 +56,17 @@ def main():
     print("🔒 Security settings applied")
     print("=" * 60)
     
+    # Get port from environment (Render sets this automatically)
+    port = int(os.getenv("PORT", "8000"))
+    print(f"🌐 Starting server on port {port}")
+    
     # Import and start server
     try:
         import uvicorn
         uvicorn.run(
             "main:app",
-            host="0.0.0.0",
-            port=int(os.getenv("PORT", "8000")),
+            host="0.0.0.0",  # Important: bind to all interfaces for Render
+            port=port,
             workers=4,
             access_log=True,
             log_level="info"
