@@ -10,8 +10,8 @@ import logging
 from dotenv import load_dotenv
 from starlette.middleware.base import BaseHTTPMiddleware
 
-# Import routers
-from app.routers import auth, admin, contact, content, services, team, portfolio, faq, testimonials
+# Import routers (auth router enabled for admin session management)
+from app.routers import admin, contact, content, services, team, portfolio, faq, testimonials, auth
 from app.routers.contact import admin_compat_router as contacts_router
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security import SecurityMiddleware
@@ -46,30 +46,10 @@ app = FastAPI(
 async def any_options(full_path: str):
     return Response(status_code=200)
 
-# Dev-friendly CORS: when DEBUG, install a permissive middleware to handle preflight
-class DevCORSMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        origin = request.headers.get("origin", "*")
-        if request.method == "OPTIONS":
-            # Respond to preflight without strict checks (Next.js proxy may omit some headers)
-            return Response(status_code=200, headers={
-                "Access-Control-Allow-Origin": origin,
-                "Access-Control-Allow-Credentials": "true",
-                "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-                "Access-Control-Allow-Headers": request.headers.get("access-control-request-headers", "*") or "*",
-                "Vary": "Origin",
-            })
-        response = await call_next(request)
-        # Set CORS headers on normal responses
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers.setdefault("Vary", "Origin")
-        return response
-
 """
 Middleware order note (Starlette): last added runs first on requests.
 We want CORS to be the outermost middleware so it can handle preflights and set headers.
-TrustedHost middleware is configured more permissively to avoid "Invalid Host Header" errors.
+TrustedHost middleware is configured to work with separate hosting environments.
 """
 
 # Inner middlewares first
@@ -79,19 +59,22 @@ app.add_middleware(RateLimitMiddleware)
 # Configure CORS - this will be the outermost middleware
 cors_origins = list(settings.ALLOWED_ORIGINS)
 
-# Add Render domain if not already present
-render_url = "https://cortejtech-backend.onrender.com"
-if render_url not in cors_origins:
-    cors_origins.append(render_url)
-
-# In development or when testing, allow additional origins
+# In development or when testing, use permissive CORS with explicit origins
 if settings.DEBUG or settings.ENVIRONMENT == "development":
-    app.add_middleware(DevCORSMiddleware)
-else:
-    # Production CORS setup
+    # Development: use explicit origin list but be more lenient
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=cors_origins + ["*"] if settings.ENVIRONMENT == "testing" else cors_origins,
+        allow_origins=cors_origins,  # Explicit list, no wildcards
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
+else:
+    # Production CORS setup with strict origin checking
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,  # Only explicitly allowed origins
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
@@ -118,8 +101,9 @@ if not settings.DEBUG and trusted_hosts:
     )
 
 # Include routers
-# Mount auth routes under /api/auth for consistency with admin client and main_admin
-app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
+# NOTE: Auth router provides session-login and is-admin endpoints for admin dashboard
+# The admin dashboard uses Auth0 SDK routes at /api/auth/[...auth0] for Auth0 flows
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(contact.router, prefix="/api/contact", tags=["contact"])
 app.include_router(content.router, prefix="/api/content", tags=["content"])
@@ -148,14 +132,11 @@ async def api_content_redirect():
 
 @app.get("/api/auth")  
 async def api_auth_redirect():
-    """Redirect /api/auth to /api/auth/ (no trailing slash handler)"""
+    """Info endpoint - Auth0 handles authentication in the admin dashboard"""
     return {
-        "message": "Authentication API",
-        "endpoints": [
-            "POST /api/auth/session-login - Create admin session",
-            "GET /api/auth/is-admin - Check admin status", 
-            "POST /api/auth/logout - Logout admin user"
-        ]
+        "message": "Authentication is handled by Auth0 in the admin dashboard",
+        "note": "This backend does not provide authentication endpoints",
+        "admin_auth": "Use Auth0 login at admin dashboard /api/auth/login"
     }
 
 @app.get("/api/admin")

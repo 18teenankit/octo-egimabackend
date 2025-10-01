@@ -49,25 +49,25 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = Field(default="", frozen=True)
     TELEGRAM_CHAT_ID: str = Field(default="", frozen=True)
     
-    # CORS
+    # CORS - Configure for separate hosting of main site, admin dashboard, and backend
     ALLOWED_ORIGINS: List[str] = (
         os.getenv("ALLOWED_ORIGINS", "")
         .split(",")
         if os.getenv("ALLOWED_ORIGINS")
         else [
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "http://localhost:3002",  # allow dev server fallback port
+            # Local development
+            "http://localhost:3000",  # Main site dev
+            "http://localhost:3001",  # Admin dashboard dev
             "http://127.0.0.1:3000",
-            "http://127.0.0.1:3001", 
-            "http://127.0.0.1:3002",
-            "https://cortejtech.com",
-            "https://www.cortejtech.com",
+            "http://127.0.0.1:3001",
+            # Production domains - UPDATE THESE WITH YOUR ACTUAL DOMAINS
+            "https://cortejtech.com",           # Main site production
+            "https://www.cortejtech.com",       # Main site with www
+            "https://admin.cortejtech.com",     # Admin dashboard production
             "https://cortejtech.in",
             "https://www.cortejtech.in",
-            "https://cortejtech-backend.onrender.com",  # Render backend URL
-            # Add your frontend domains here
-            "https://your-frontend-domain.com",  # Replace with actual frontend domain
+            # Backend URL (for health checks, etc.)
+            "https://cortejtech-backend.onrender.com",
         ]
     )
     
@@ -80,9 +80,10 @@ class Settings(BaseSettings):
             "0.0.0.0",  # Important for Docker/Render
             "cortejtech.com",
             "www.cortejtech.com",
+            "admin.cortejtech.com",
             "cortejtech.in",
             "www.cortejtech.in",
-            "cortejtech-backend.onrender.com",  # Render domain
+            "cortejtech-backend.onrender.com",
             "*.onrender.com",  # Allow any Render subdomain
         ]
     )

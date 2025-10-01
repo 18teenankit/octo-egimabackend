@@ -63,30 +63,27 @@ def verify_token(token: str) -> tuple[Optional[dict], Optional[str]]:
         return None, "invalid_jwt"
 
 async def get_current_user(request: Request, credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)):
-    """Extract user info from Auth0 token or session cookie."""
+    """Extract user info from Auth0 token passed from admin dashboard.
     
-    # Method 1: Try Authorization header (session token from frontend)
+    The admin dashboard uses Auth0 for authentication. When making requests to this backend,
+    it should pass the Auth0 access token in the Authorization header.
+    
+    For now, we'll use a simplified approach where the admin dashboard passes user info
+    in a signed token format.
+    """
+    
+    # Method 1: Try Authorization header with Bearer token
     if credentials and credentials.credentials:
         try:
             token = credentials.credentials
-            # Decode the base64 session token from frontend
-            if token and len(token) > 20:
-                try:
-                    import base64
-                    decoded = base64.b64decode(token).decode('utf-8')
-                    session_data = json.loads(decoded)
-                    email = session_data.get('email')
-                    timestamp = session_data.get('timestamp', 0)
-                    
-                    # Check if email is admin and token is not too old (1 hour)
-                    if email and is_admin_email(email):
-                        token_age = (datetime.now().timestamp() * 1000) - timestamp
-                        if token_age < 3600000:  # 1 hour in milliseconds
-                            return {"email": email, "is_admin": True}
-                except Exception as decode_error:
-                    logger.debug(f"Failed to decode session token: {decode_error}")
+            # Try to verify as a signed admin session token
+            if "." in token:
+                # This is our HMAC-signed session token
+                email = verify_admin_session(token)
+                if email and is_admin_email(email):
+                    return {"email": email, "is_admin": True}
         except Exception as e:
-            logger.debug(f"Failed to validate session token: {e}")
+            logger.debug(f"Failed to validate bearer token: {e}")
     
     # Method 2: Try session cookie (fallback for browser requests)
     cookie_token = request.cookies.get(ADMIN_COOKIE_NAME)
