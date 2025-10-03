@@ -133,10 +133,10 @@ async def public_team():
         supabase = get_supabase()
         result = (
             supabase
-            .table("team")
+            .table("team_members")
             .select("*")
-            .eq("is_active", True)
-            .order("created_at", desc=True)
+            .eq("active", True)
+            .order("order", desc=False)
             .execute()
         )
         return {"team": result.data or []}
@@ -193,8 +193,8 @@ async def public_faq():
             supabase
             .table("faqs")
             .select("*")
-            .eq("is_active", True)
-            .order("sort_order", desc=False)
+            .eq("active", True)
+            .order("order", desc=False)
             .order("updated_at", desc=True)
             .execute()
         )
@@ -235,3 +235,422 @@ async def public_testimonials():
     except Exception as e:
         logger.error(f"Public testimonials error: {e}")
         return {"testimonials": []}
+
+# ===== CRUD operations for admin dashboard =====
+
+@router.post("/portfolio")
+async def create_portfolio_item(
+    request: Request,
+    portfolio_data: dict,
+    current_user: dict = Depends(require_admin)
+):
+    """POST /api/content/portfolio -> create portfolio item (admin only)"""
+    try:
+        supabase = get_supabase()
+        
+        # If this is just a cache invalidation request, return success
+        if portfolio_data.get("action") == "invalidate":
+            return {"success": True, "message": "Cache invalidated"}
+        
+        # Handle actual creation
+        result = supabase.table("portfolio").insert(portfolio_data).execute()
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create portfolio item"
+            )
+        
+        await log_admin_action(
+            request, 
+            current_user["email"], 
+            "create_portfolio_item", 
+            {"title": portfolio_data.get("title")}
+        )
+        
+        return {"success": True, "portfolio": result.data[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Create portfolio item error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create portfolio item"
+        )
+
+@router.put("/portfolio/{item_id}")
+async def update_portfolio_item(
+    item_id: str,
+    request: Request,
+    portfolio_data: dict,
+    current_user: dict = Depends(require_admin)
+):
+    """PUT /api/content/portfolio/{id} -> update portfolio item (admin only)"""
+    try:
+        supabase = get_supabase()
+        
+        result = supabase.table("portfolio").update(portfolio_data).eq("id", item_id).execute()
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Portfolio item not found"
+            )
+        
+        await log_admin_action(
+            request,
+            current_user["email"], 
+            "update_portfolio_item",
+            {"item_id": item_id, "title": portfolio_data.get("title")}
+        )
+        
+        return {"success": True, "portfolio": result.data[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update portfolio item error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update portfolio item"
+        )
+
+@router.delete("/portfolio/{item_id}")
+async def delete_portfolio_item(
+    item_id: str,
+    request: Request,
+    current_user: dict = Depends(require_admin)
+):
+    """DELETE /api/content/portfolio/{id} -> delete portfolio item (admin only)"""
+    try:
+        supabase = get_supabase()
+        
+        result = supabase.table("portfolio").delete().eq("id", item_id).execute()
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Portfolio item not found"
+            )
+        
+        await log_admin_action(
+            request,
+            current_user["email"],
+            "delete_portfolio_item", 
+            {"item_id": item_id}
+        )
+        
+        return {"success": True, "message": "Portfolio item deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete portfolio item error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete portfolio item"
+        )
+
+@router.post("/team")
+async def create_team_member(
+    request: Request,
+    team_data: dict,
+    current_user: dict = Depends(require_admin)
+):
+    """POST /api/content/team -> create team member (admin only)"""
+    try:
+        supabase = get_supabase()
+        
+        result = supabase.table("team_members").insert(team_data).execute()
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create team member"
+            )
+        
+        await log_admin_action(
+            request,
+            current_user["email"],
+            "create_team_member",
+            {"name": team_data.get("name")}
+        )
+        
+        return {"success": True, "team": result.data[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Create team member error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create team member"
+        )
+
+@router.put("/team/{member_id}")
+async def update_team_member(
+    member_id: str,
+    request: Request,
+    team_data: dict,
+    current_user: dict = Depends(require_admin)
+):
+    """PUT /api/content/team/{id} -> update team member (admin only)"""
+    try:
+        supabase = get_supabase()
+        
+        result = supabase.table("team_members").update(team_data).eq("id", member_id).execute()
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Team member not found"
+            )
+        
+        await log_admin_action(
+            request,
+            current_user["email"],
+            "update_team_member",
+            {"member_id": member_id, "name": team_data.get("name")}
+        )
+        
+        return {"success": True, "team": result.data[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update team member error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update team member"
+        )
+
+@router.delete("/team/{member_id}")
+async def delete_team_member(
+    member_id: str,
+    request: Request,
+    current_user: dict = Depends(require_admin)
+):
+    """DELETE /api/content/team/{id} -> delete team member (admin only)"""
+    try:
+        supabase = get_supabase()
+        
+        result = supabase.table("team_members").delete().eq("id", member_id).execute()
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Team member not found"
+            )
+        
+        await log_admin_action(
+            request,
+            current_user["email"],
+            "delete_team_member",
+            {"member_id": member_id}
+        )
+        
+        return {"success": True, "message": "Team member deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete team member error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete team member"
+        )
+
+@router.post("/testimonials")
+async def create_testimonial(
+    request: Request,
+    testimonial_data: dict,
+    current_user: dict = Depends(require_admin)
+):
+    """POST /api/content/testimonials -> create testimonial (admin only)"""
+    try:
+        supabase = get_supabase()
+        
+        result = supabase.table("testimonials").insert(testimonial_data).execute()
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create testimonial"
+            )
+        
+        await log_admin_action(
+            request,
+            current_user["email"],
+            "create_testimonial",
+            {"name": testimonial_data.get("name")}
+        )
+        
+        return {"success": True, "testimonial": result.data[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Create testimonial error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create testimonial"
+        )
+
+@router.put("/testimonials/{testimonial_id}")
+async def update_testimonial(
+    testimonial_id: str,
+    request: Request,
+    testimonial_data: dict,
+    current_user: dict = Depends(require_admin)
+):
+    """PUT /api/content/testimonials/{id} -> update testimonial (admin only)"""
+    try:
+        supabase = get_supabase()
+        
+        result = supabase.table("testimonials").update(testimonial_data).eq("id", testimonial_id).execute()
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Testimonial not found"
+            )
+        
+        await log_admin_action(
+            request,
+            current_user["email"],
+            "update_testimonial",
+            {"testimonial_id": testimonial_id, "name": testimonial_data.get("name")}
+        )
+        
+        return {"success": True, "testimonial": result.data[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update testimonial error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update testimonial"
+        )
+
+@router.delete("/testimonials/{testimonial_id}")
+async def delete_testimonial(
+    testimonial_id: str,
+    request: Request,
+    current_user: dict = Depends(require_admin)
+):
+    """DELETE /api/content/testimonials/{id} -> delete testimonial (admin only)"""
+    try:
+        supabase = get_supabase()
+        
+        result = supabase.table("testimonials").delete().eq("id", testimonial_id).execute()
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Testimonial not found"
+            )
+        
+        await log_admin_action(
+            request,
+            current_user["email"],
+            "delete_testimonial",
+            {"testimonial_id": testimonial_id}
+        )
+        
+        return {"success": True, "message": "Testimonial deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete testimonial error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete testimonial"
+        )
+
+@router.post("/faq")
+async def create_faq(
+    request: Request,
+    faq_data: dict,
+    current_user: dict = Depends(require_admin)
+):
+    """POST /api/content/faq -> create FAQ (admin only)"""
+    try:
+        supabase = get_supabase()
+        
+        result = supabase.table("faqs").insert(faq_data).execute()
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create FAQ"
+            )
+        
+        await log_admin_action(
+            request,
+            current_user["email"],
+            "create_faq",
+            {"question": faq_data.get("question")}
+        )
+        
+        return {"success": True, "faq": result.data[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Create FAQ error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create FAQ"
+        )
+
+@router.put("/faq/{faq_id}")
+async def update_faq(
+    faq_id: str,
+    request: Request,
+    faq_data: dict,
+    current_user: dict = Depends(require_admin)
+):
+    """PUT /api/content/faq/{id} -> update FAQ (admin only)"""
+    try:
+        supabase = get_supabase()
+        
+        result = supabase.table("faqs").update(faq_data).eq("id", faq_id).execute()
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="FAQ not found"
+            )
+        
+        await log_admin_action(
+            request,
+            current_user["email"],
+            "update_faq",
+            {"faq_id": faq_id, "question": faq_data.get("question")}
+        )
+        
+        return {"success": True, "faq": result.data[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update FAQ error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update FAQ"
+        )
+
+@router.delete("/faq/{faq_id}")
+async def delete_faq(
+    faq_id: str,
+    request: Request,
+    current_user: dict = Depends(require_admin)
+):
+    """DELETE /api/content/faq/{id} -> delete FAQ (admin only)"""
+    try:
+        supabase = get_supabase()
+        
+        result = supabase.table("faqs").delete().eq("id", faq_id).execute()
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="FAQ not found"
+            )
+        
+        await log_admin_action(
+            request,
+            current_user["email"],
+            "delete_faq",
+            {"faq_id": faq_id}
+        )
+        
+        return {"success": True, "message": "FAQ deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete FAQ error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete FAQ"
+        )

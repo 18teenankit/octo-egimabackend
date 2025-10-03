@@ -58,8 +58,10 @@ class Settings(BaseSettings):
             # Local development
             "http://localhost:3000",  # Main site dev
             "http://localhost:3001",  # Admin dashboard dev
+            "http://localhost:3050",  # Admin dashboard dev (alternative port)
             "http://127.0.0.1:3000",
             "http://127.0.0.1:3001",
+            "http://127.0.0.1:3050",
             # Production domains - UPDATE THESE WITH YOUR ACTUAL DOMAINS
             "https://cortejtech.com",           # Main site production
             "https://www.cortejtech.com",       # Main site with www
