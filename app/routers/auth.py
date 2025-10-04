@@ -1,10 +1,15 @@
-import os
-from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, Response, status, Request
-import jwt
+"""
+Auth0 Authentication Router for FastAPI Backend
+Handles Auth0 token validation and admin verification
+"""
 import logging
+from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.config import settings
-from app.core.security import is_admin_email, sign_admin_session
+from app.core.auth0_security import (
+    get_current_auth0_user,
+    require_auth0_user,
+    require_auth0_admin
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -16,94 +21,77 @@ router = APIRouter()
 async def get_auth_info():
     """Get authentication API information and available endpoints"""
     return {
-        "message": "Authentication API",
+        "message": "Auth0 Authentication API",
+        "version": "2.0",
+        "auth_provider": "Auth0",
         "endpoints": [
-            "POST /session-login - Create admin session",
-            "GET /is-admin - Check admin status", 
-            "POST /logout - Logout admin user"
-        ]
+            "GET /me - Get current authenticated user info",
+            "GET /verify - Verify Auth0 token", 
+            "GET /is-admin - Check if user has admin privileges"
+        ],
+        "note": "All authentication is handled via Auth0. Frontend should redirect to /api/auth/login for login."
     }
 
-# --- Pydantic Models ---
-class SessionLoginRequest(BaseModel):
-    access_token: str
-
-@router.post("/session-login", status_code=status.HTTP_200_OK)
-async def session_login(request: SessionLoginRequest, response: Response):
+@router.get("/me")
+async def get_current_user_info(user: dict = Depends(require_auth0_user)):
     """
-    Creates a secure admin session for the frontend.
-    This is a simplified version that works with the session tokens from the frontend.
+    Get current authenticated user information from Auth0 token
+    Requires valid Auth0 Bearer token in Authorization header
     """
-    try:
-        logger.info("Attempting session login")
-        
-        # For now, let's create a simple session for the admin email
-        # In a full implementation, you'd verify the access_token properly
-        admin_email = settings.ALLOWED_ADMIN_EMAIL
-        
-        if not admin_email:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Admin email not configured"
-            )
-        
-        # Create admin session token
-        session_token = sign_admin_session(admin_email, ttl_seconds=3600)
-        
-        # Set secure HTTP-only cookie
-        response.set_cookie(
-            key=settings.ADMIN_COOKIE_NAME,
-            value=session_token,
-            httponly=True,
-            secure=False,  # Set to True in production with HTTPS
-            samesite="lax",
-            path="/",
-            max_age=3600,  # 1 hour
-        )
-        
-        logger.info(f"Admin session created for: {admin_email}")
-        return {"message": "Admin session created successfully", "email": admin_email}
+    return {
+        "user": {
+            "id": user.get("sub"),
+            "email": user.get("email"),
+            "email_verified": user.get("email_verified"),
+            "name": user.get("name"),
+            "nickname": user.get("nickname"),
+            "picture": user.get("picture"),
+        },
+        "authenticated": True
+    }
 
-    except Exception as e:
-        logger.exception("An unexpected error occurred during session login.")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An internal error occurred: {str(e)}",
-        )
+@router.get("/verify")
+async def verify_token(user: dict = Depends(require_auth0_user)):
+    """
+    Verify Auth0 access token
+    Returns success if token is valid
+    """
+    return {
+        "valid": True,
+        "user_id": user.get("sub"),
+        "email": user.get("email")
+    }
 
 @router.get("/is-admin")
-async def is_admin(request: Request):
-    """Check if current session is admin"""
-    try:
-        from app.core.security import get_current_user
-        user = await get_current_user(request)
-        if user and user.get("is_admin"):
-            return {"is_admin": True, "email": user.get("email")}
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not authenticated as admin"
-            )
-    except Exception as e:
-        logger.debug(f"is_admin check failed: {e}")
+async def check_admin_status(user: dict = Depends(require_auth0_admin)):
+    """
+    Check if current user has admin privileges
+    Requires valid Auth0 token AND email must be in allowed admin list
+    """
+    return {
+        "is_admin": True,
+        "email": user.get("email"),
+        "user_id": user.get("sub")
+    }
+
+# Legacy endpoint for backwards compatibility - returns Auth0 user if available
+@router.get("/session")
+async def get_session(user: dict = Depends(get_current_auth0_user)):
+    """
+    Legacy session endpoint for backwards compatibility
+    Now returns Auth0 user information if authenticated
+    """
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required"
+            detail="Not authenticated"
         )
-
-@router.post("/logout")
-async def logout(response: Response):
-    """Logout admin user by clearing session cookie"""
-    try:
-        response.delete_cookie(
-            key=settings.ADMIN_COOKIE_NAME,
-            path="/",
-            domain=None
-        )
-        return {"message": "Logged out successfully"}
-    except Exception as e:
-        logger.exception("Logout error")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Logout failed"
-        )
+    
+    return {
+        "authenticated": True,
+        "user": {
+            "email": user.get("email"),
+            "name": user.get("name"),
+            "picture": user.get("picture")
+        }
+    }

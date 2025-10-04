@@ -59,13 +59,23 @@ app.add_middleware(RateLimitMiddleware)
 # Configure CORS - this will be the outermost middleware
 cors_origins = list(settings.ALLOWED_ORIGINS)
 
+# Ensure admin dashboard is in allowed origins
+admin_dashboard_origins = [
+    "http://localhost:3001",
+    "https://admin.cortejtech.com",  # Production admin domain
+]
+
+for origin in admin_dashboard_origins:
+    if origin not in cors_origins:
+        cors_origins.append(origin)
+
 # In development or when testing, use permissive CORS with explicit origins
 if settings.DEBUG or settings.ENVIRONMENT == "development":
     # Development: use explicit origin list but be more lenient
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,  # Explicit list, no wildcards
-        allow_credentials=True,
+        allow_credentials=True,  # Required for Auth0 cookies
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
         expose_headers=["*"],
@@ -75,9 +85,9 @@ else:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,  # Only explicitly allowed origins
-        allow_credentials=True,
+        allow_credentials=True,  # Required for Auth0 cookies
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["*"],
+        allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
         expose_headers=["*"],
     )
 

@@ -41,10 +41,6 @@ class Settings(BaseSettings):
         [e.strip().lower() for e in os.getenv("ALLOWED_ADMIN_EMAILS", "giriankit595@outlook.com,info@cortejtech.com").split(",") if e.strip()]
     )
     
-    # reCAPTCHA
-    RECAPTCHA_SECRET_KEY: str = Field(default="")
-    NEXT_PUBLIC_RECAPTCHA_SITE_KEY: str = Field(default="")
-    
     # Telegram not used (explicitly disabled)
     TELEGRAM_BOT_TOKEN: str = Field(default="", frozen=True)
     TELEGRAM_CHAT_ID: str = Field(default="", frozen=True)
@@ -119,6 +115,13 @@ class Settings(BaseSettings):
     # Auth behavior: whether to allow creating a new Supabase user via OTP login
     # If false, magic link will only be sent to pre-existing users in Supabase Auth
     ALLOW_NEW_AUTH_USERS: bool = Field(default=False)
+    
+    # Auth0 Configuration (Primary Authentication System)
+    NEXT_PUBLIC_AUTH0_DOMAIN: str = Field(default="cortejtech.us.auth0.com")
+    NEXT_PUBLIC_AUTH0_CLIENT_ID: str = Field(default="")
+    AUTH0_CLIENT_SECRET: str = Field(default="")
+    # Auth0 API audience (for JWT validation)
+    AUTH0_AUDIENCE: str = Field(default="")
     
     def model_post_init(self, __context) -> None:
         # Fallback: map NEXT_PUBLIC_* vars if primary fields are empty

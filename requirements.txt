@@ -16,6 +16,7 @@ passlib[bcrypt]==1.7.4
 python-decouple==3.8
 # Align httpx with python-telegram-bot 20.7 requirement
 httpx==0.25.2
+requests==2.31.0
  # Removed asyncpg (wheel build failure on Py 3.13); not needed if using HTTP-based supabase client
 redis==5.0.1
 celery==5.3.4

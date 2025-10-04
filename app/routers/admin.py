@@ -1,8 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends, Request, status
-from app.core.security import require_admin, log_admin_action
+from app.core.security import log_admin_action
 from app.core.database import get_supabase
 from typing import List, Dict, Any
 import logging
+
+# Import Auth0 security (ONLY authentication method)
+from app.core.auth0_security import require_auth0_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -23,7 +26,7 @@ async def get_admin_info():
 @router.get("/dashboard/stats")
 async def get_dashboard_stats(
     request: Request,
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(require_auth0_admin)
 ):
     """Get dashboard statistics (admin only)"""
     try:
@@ -90,7 +93,7 @@ async def get_dashboard_stats(
 @router.get("/audit-log")
 async def get_audit_log(
     request: Request,
-    current_user: dict = Depends(require_admin),
+    current_user: dict = Depends(require_auth0_admin),
     limit: int = 100,
     offset: int = 0
 ):
@@ -119,7 +122,7 @@ async def get_audit_log(
 @router.get("/users")
 async def get_admin_users(
     request: Request,
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(require_auth0_admin)
 ):
     """Get admin users list (admin only)"""
     try:
@@ -148,7 +151,7 @@ async def get_admin_users(
 async def create_admin_user(
     request: Request,
     user_data: Dict[str, Any],
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(require_auth0_admin)
 ):
     """Create new admin user (admin only)"""
     try:
@@ -195,7 +198,7 @@ async def create_admin_user(
 async def delete_admin_user(
     user_id: str,
     request: Request,
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(require_auth0_admin)
 ):
     """Delete admin user (admin only)"""
     try:

@@ -4,7 +4,6 @@ from datetime import datetime
 
 class MagicLinkRequest(BaseModel):
     email: EmailStr
-    recaptcha_token: Optional[str] = None
 
 class MagicLinkResponse(BaseModel):
     success: bool

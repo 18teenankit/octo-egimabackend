@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Request, status
 from app.models.content import ContactMessage, ContactResponse
-from app.core.security import require_admin, log_admin_action
+from app.core.auth0_security import require_auth0_admin as require_admin
+from app.core.security import log_admin_action
 from app.core.database import get_supabase, execute_query
 from app.core.config import settings  # Fix: required for REST fallback settings usage
 from typing import List, Optional
@@ -331,3 +332,4 @@ async def admin_delete_contact(
     except Exception as e:
         logger.error(f"Admin delete contact error: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete contact")
+

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Request, status
 from app.models.content import Testimonial
-from app.core.security import require_admin, log_admin_action
+from app.core.auth0_security import require_auth0_admin as require_admin
+from app.core.security import log_admin_action
 from app.core.database import get_supabase
 from typing import List
 import logging
